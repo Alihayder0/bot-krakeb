@@ -6,9 +6,13 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # --- الإعدادات الرئيسية ---
-TOKEN = "7970147689:AAFogf72go2IjxuA7irtMVF8GimlRVLz8LA"
+# --- الإعدادات الرئيسية ---
+
+
+TOKEN = os.environ.get("BOT_TOKEN")
 DATA_FILE = "time_data.json"
-ADMIN_USER_ID = 1495688933
+# نقرأ الـ ID كنص ثم نحوله إلى رقم صحيح (integer)
+ADMIN_USER_ID = int(os.environ.get("ADMIN_ID"))
 USER_NAMES = ["علي", "فهد", "حميد", "حيدر", "رامي"]
 WORK_TYPES = ["طباعة", "عمل يدوي"]
 
