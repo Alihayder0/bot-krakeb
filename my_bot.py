@@ -10,7 +10,10 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 
 
 TOKEN = os.environ.get("BOT_TOKEN")
-DATA_FILE = "time_data.json"
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(BASE_DIR, "time_data.json")
+
 # نقرأ الـ ID كنص ثم نحوله إلى رقم صحيح (integer)
 ADMIN_USER_ID = int(os.environ.get("ADMIN_ID"))
 USER_NAMES = ["علي", "فهد", "حميد", "حيدر", "رامي"]
