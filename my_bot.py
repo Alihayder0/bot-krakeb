@@ -15,7 +15,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "time_data.json")
 
 # نقرأ الـ ID كنص ثم نحوله إلى رقم صحيح (integer)
-ADMIN_USER_ID = int(os.environ.get("ADMIN_ID"))
+ADMIN_USER_ID =  1495688933
 USER_NAMES = ["علي", "فهد", "حميد", "حيدر", "رامي"]
 WORK_TYPES = ["طباعة", "عمل يدوي"]
 
