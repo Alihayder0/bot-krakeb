@@ -2,20 +2,28 @@
 import os
 import json
 from datetime import datetime
+from dotenv import load_dotenv
+
+
+
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # --- الإعدادات الرئيسية ---
 # --- الإعدادات الرئيسية ---
 
+load_dotenv()  # تحميل متغيرات البيئة من ملف .env
 
-TOKEN = "7970147689:AAFogf72go2IjxuA7irtMVF8GimlRVLz8LA"
+TOKEN = os.getenv("TOKEN")
+ADMIN_USER_ID = int(os.getenv("ADMIN_ID"))
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "time_data.json")
 
 # نقرأ الـ ID كنص ثم نحوله إلى رقم صحيح (integer)
-ADMIN_USER_ID =  1495688933
+
 USER_NAMES = ["علي", "فهد", "حميد", "حيدر", "رامي"]
 WORK_TYPES = ["طباعة", "عمل يدوي"]
 
