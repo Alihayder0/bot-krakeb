@@ -9,7 +9,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 # --- الإعدادات الرئيسية ---
 
 
-TOKEN = os.environ.get("BOT_TOKEN")
+TOKEN = "7970147689:AAFogf72go2IjxuA7irtMVF8GimlRVLz8LA"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "time_data.json")
