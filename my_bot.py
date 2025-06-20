@@ -88,13 +88,20 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- معالج الضغط على الأزرار ---
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-    
+    try:
+        await query.answer()
+    except Exception as e:
+        # نتجاهل الخطأ إذا كان بسبب انتهاء وقت الرد على الـ callback query
+        if "Query is too old" in str(e) or "query id is invalid" in str(e):
+            pass
+        else:
+            raise
+
     data = query.data
     parts = data.split(':')
     action = parts[0]
 
-    # ... (منطق بدء العداد لا يحتاج تغيير كبير)
+    # ... باقي الكود كما هو بدون تعديل
     if action == "select_work":
         user_name, work_type = parts[1], parts[2]
         if user_name in active_timers:
@@ -103,7 +110,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active_timers[user_name] = {'start_time': datetime.now(), 'work_type': work_type}
         keyboard = [[InlineKeyboardButton("إنهاء الوقت ⏹️", callback_data="timer_stop_select_user")]]
         await query.edit_message_text(f"✅ تم بدء عداد الوقت لـ '{user_name}' في مهمة '{work_type}' الساعة {datetime.now().strftime('%H:%M:%S')}.", reply_markup=InlineKeyboardMarkup(keyboard))
-
     # **تعديل جوهري: منطق إيقاف العداد ليحفظ البيانات حسب النوع**
     elif action == "stop_timer_for":
         user_name = parts[1]
