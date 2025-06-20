@@ -14,10 +14,13 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 
 load_dotenv()  # تحميل متغيرات البيئة من ملف .env
 
+
 TOKEN = os.getenv("TOKEN")
 ADMIN_USER_ID = int(os.getenv("ADMIN_ID"))
+if not TOKEN or not ADMIN_USER_ID:
+    raise ValueError("يجب تعريف متغيرات TOKEN و ADMIN_ID في ملف .env")
 
-
+ADMIN_USER_ID = int(ADMIN_USER_ID)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "time_data.json")
 
