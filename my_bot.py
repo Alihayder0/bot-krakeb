@@ -110,9 +110,10 @@ async def check_and_schedule_service_reminder(context: ContextTypes.DEFAULT_TYPE
 # --- معالجات الأوامر والأزرار (مع التعديلات اللازمة) ---
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if SERVICE_CHECK_PENDING and update.effective_user.id == ADMIN_USER_ID:
-        await update.message.reply_text("⚠️ يجب تأكيد مهمة الصيانة أولاً للمتابعة.")
-        return
+  if SERVICE_CHECK_PENDING:
+    await update.message.reply_text("⚠️ يجب تأكيد الصيانة أولاً للمتابعة.")
+    return
+
 
     keyboard = [
         [InlineKeyboardButton("⏱️ بدء وقت العمل", callback_data="timer_start_select_user")],
@@ -131,9 +132,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
 
-    if data != "confirm_service_check" and SERVICE_CHECK_PENDING and query.from_user.id == ADMIN_USER_ID:
-        await query.answer("⚠️ يجب تأكيد مهمة الصيانة أولاً للمتابعة.", show_alert=True)
-        return
+    if data != "confirm_service_check" and SERVICE_CHECK_PENDING:
+    await query.answer("⚠️ يجب تأكيد الصيانة أولاً للمتابعة.", show_alert=True)
+    return
+        
 
     try:
         await query.answer()
