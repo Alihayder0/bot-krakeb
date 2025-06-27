@@ -100,7 +100,7 @@ async def send_service_reminder(context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=ADMIN_USER_ID,
-        text="🚨 *تنبيه صيانة دوري* 🚨\n\n- جيك السيرفس بوكس\n- عبي الحبر\n\n*ملاحظة: لن يعمل البوت حتى يتم تأكيد إتمام الصيانة.*",
+        text="� *تنبيه صيانة دوري* 🚨\n\n- جيك السيرفس بوكس\n- عبي الحبر\n\n*ملاحظة: لن يعمل البوت حتى يتم تأكيد إتمام الصيانة.*",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
@@ -384,6 +384,14 @@ def main():
     load_data()
     
     app = Application.builder().token(TOKEN).build()
+
+    # التحقق من وجود طابور المهام (JobQueue) قبل المتابعة
+    if not app.job_queue:
+        print("\n\n❌ خطأ فادح: لم يتم العثور على JobQueue.")
+        print("هذا يعني أن المكتبة لم تُثبّت مع الإضافات اللازمة للمهام المجدولة.")
+        print('لحل المشكلة، يرجى إيقاف البوت وتنفيذ الأمر التالي في الطرفية (Terminal):')
+        print('\n  pip install --upgrade "python-telegram-bot[job-queue]"\n')
+        return # إيقاف تشغيل البوت لأن الجدولة لن تعمل
 
     # إضافة المعالجات
     app.add_handler(CommandHandler("start", start_command))
