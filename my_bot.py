@@ -273,29 +273,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-    elif action == "stop_timer_all":
-        if not active_timers:
-            await query.edit_message_text("لا توجد أي عدادات وقت نشطة لإيقافها.")
-            return
-        all_data = load_data()
-        message = "✅ تم إيقاف جميع العدادات النشطة:\n\n"
-        for user_name in list(active_timers.keys()):
-            start_info = active_timers.pop(user_name)
-            work_type = start_info['work_type']
-            duration = round((datetime.now() - start_info['start_time']).total_seconds() / 60)
-            all_data["users"].setdefault(user_name, {}).setdefault(work_type, 0)
-            all_data["users"][user_name][work_type] += duration
-            message += f"👤 {user_name} ({work_type}): +{duration} دقيقة\n"
-        save_data(all_data)
-        keyboard = [[InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")]]
-        await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard))
+   elif action == "stop_timer_all":
+    if not active_timers:
+        await query.edit_message_text("لا توجد أي عدادات وقت نشطة لإيقافها.")
+        return
+    all_data = load_data()
+    message = "✅ تم إيقاف جميع العدادات النشطة:\n\n"
+    for user_name in list(active_timers.keys()):
+        start_info = active_timers.pop(user_name)
+        work_type = start_info['work_type']
+        duration = round((datetime.now() - start_info['start_time']).total_seconds() / 60)
+        all_data["users"].setdefault(user_name, {}).setdefault(work_type, 0)
+        all_data["users"][user_name][work_type] += duration
+        message += f"👤 {user_name} ({work_type}): +{duration} دقيقة\n"
+    save_data(all_data)
+    keyboard = [[InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")]]
+    await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard))
 
-    elif action == "calculate_money_select_user":
-        keyboard = [[InlineKeyboardButton(name, callback_data=f"calculate_for:{name}")] for name in USER_NAMES]
-        keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
-        await query.edit_message_text("اختر الشخص لحساب مستحقاته المالية:", reply_markup=InlineKeyboardMarkup(keyboard))
+elif action == "calculate_money_select_user":
+    keyboard = [[InlineKeyboardButton(name, callback_data=f"calculate_for:{name}")] for name in USER_NAMES]
+    keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
+    await query.edit_message_text("اختر الشخص لحساب مستحقاته المالية:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-  elif action == "admin_menu":
+elif action == "admin_menu":
     if query.from_user.id == ADMIN_USER_ID:
         keyboard = [
             [InlineKeyboardButton("♻️ تصفير عداد الجميع", callback_data="reset_all_confirm")],
