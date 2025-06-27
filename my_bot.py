@@ -295,58 +295,58 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
         await query.edit_message_text("اختر الشخص لحساب مستحقاته المالية:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    elif action == "admin_menu":
-        if query.from_user.id == ADMIN_USER_ID:
-            keyboard = [
-                [InlineKeyboardButton("♻️ تصفير عداد الجميع", callback_data="reset_all_confirm")],
-                *[[InlineKeyboardButton(f"❌ صفّر عداد {name}", callback_data=f"reset_user_confirm:{name}")] for name in USER_NAMES],
-                [InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data="main_menu")]
-            ]
-            await query.edit_message_text("قائمة المدير (يرجى الحذر):", reply_markup=InlineKeyboardMarkup(keyboard))
-        else:
-            await query.answer("عذراً، هذا الخيار متاح للمدير فقط.", show_alert=True)
-
-        elif action == "reset_all_confirm":
-        if query.from_user.id == ADMIN_USER_ID:
-            keyboard = [
-                [InlineKeyboardButton("✅ نعم، قم بالتصفير", callback_data="reset_all_execute")],
-                [InlineKeyboardButton("❌ لا، الغاء", callback_data="admin_menu")]
-            ]
-            await query.edit_message_text(
-                "⚠️ هل أنت متأكد أنك تريد تصفير عداد الجميع؟\nهذا الإجراء لا يمكن التراجع عنه.",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-        else:
-            await query.answer("عذراً، هذا الخيار متاح للمدير فقط.", show_alert=True)
-
-    elif action == "main_menu":
-        await start_command(update, context)
-
-    elif action == "timer_start_select_user":
-        keyboard = [[InlineKeyboardButton(name, callback_data=f"select_user:{name}")] for name in USER_NAMES]
-        keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
-        await query.edit_message_text("من أنت؟ اختر اسمك من القائمة:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif action == "select_user":
-        user_name = parts[1]
-        keyboard = [[InlineKeyboardButton(work, callback_data=f"select_work:{user_name}:{work}")] for work in WORK_TYPES]
-        keyboard.append([InlineKeyboardButton("🔙 رجوع لاختيار الاسم", callback_data="timer_start_select_user")])
-        await query.edit_message_text(f"أهلاً {user_name}. ما هو نوع العمل؟", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif action == "timer_stop_select_user":
-        active_users = list(active_timers.keys())
-        if not active_users:
-            keyboard = [[InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")]]
-            await query.edit_message_text("لا توجد أي عدادات وقت نشطة حالياً.", reply_markup=InlineKeyboardMarkup(keyboard))
-            return
-        keyboard = [[InlineKeyboardButton(name, callback_data=f"stop_timer_for:{name}")] for name in active_users]
-        keyboard.append([InlineKeyboardButton("⏹️ إنهاء للجميع", callback_data="stop_timer_all")])
-        keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
-        await query.edit_message_text("اختر المستخدم الذي تريد إيقاف عداده:", reply_markup=InlineKeyboardMarkup(keyboard))
-
+  elif action == "admin_menu":
+    if query.from_user.id == ADMIN_USER_ID:
+        keyboard = [
+            [InlineKeyboardButton("♻️ تصفير عداد الجميع", callback_data="reset_all_confirm")],
+            *[[InlineKeyboardButton(f"❌ صفّر عداد {name}", callback_data=f"reset_user_confirm:{name}")] for name in USER_NAMES],
+            [InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data="main_menu")]
+        ]
+        await query.edit_message_text("قائمة المدير (يرجى الحذر):", reply_markup=InlineKeyboardMarkup(keyboard))
     else:
-        # معالجة حالات غير معروفة أو غير متوقعة
-        await query.answer("عذراً، الخيار غير معروف.", show_alert=True)
+        await query.answer("عذراً، هذا الخيار متاح للمدير فقط.", show_alert=True)
+
+elif action == "reset_all_confirm":
+    if query.from_user.id == ADMIN_USER_ID:
+        keyboard = [
+            [InlineKeyboardButton("✅ نعم، قم بالتصفير", callback_data="reset_all_execute")],
+            [InlineKeyboardButton("❌ لا، الغاء", callback_data="admin_menu")]
+        ]
+        await query.edit_message_text(
+            "⚠️ هل أنت متأكد أنك تريد تصفير عداد الجميع؟\nهذا الإجراء لا يمكن التراجع عنه.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    else:
+        await query.answer("عذراً، هذا الخيار متاح للمدير فقط.", show_alert=True)
+
+elif action == "main_menu":
+    await start_command(update, context)
+
+elif action == "timer_start_select_user":
+    keyboard = [[InlineKeyboardButton(name, callback_data=f"select_user:{name}")] for name in USER_NAMES]
+    keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
+    await query.edit_message_text("من أنت؟ اختر اسمك من القائمة:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+elif action == "select_user":
+    user_name = parts[1]
+    keyboard = [[InlineKeyboardButton(work, callback_data=f"select_work:{user_name}:{work}")] for work in WORK_TYPES]
+    keyboard.append([InlineKeyboardButton("🔙 رجوع لاختيار الاسم", callback_data="timer_start_select_user")])
+    await query.edit_message_text(f"أهلاً {user_name}. ما هو نوع العمل؟", reply_markup=InlineKeyboardMarkup(keyboard))
+
+elif action == "timer_stop_select_user":
+    active_users = list(active_timers.keys())
+    if not active_users:
+        keyboard = [[InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")]]
+        await query.edit_message_text("لا توجد أي عدادات وقت نشطة حالياً.", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+    keyboard = [[InlineKeyboardButton(name, callback_data=f"stop_timer_for:{name}")] for name in active_users]
+    keyboard.append([InlineKeyboardButton("⏹️ إنهاء للجميع", callback_data="stop_timer_all")])
+    keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
+    await query.edit_message_text("اختر المستخدم الذي تريد إيقاف عداده:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+else:
+    # معالجة حالات غير معروفة أو غير متوقعة
+    await query.answer("عذراً، الخيار غير معروف.", show_alert=True)
 
 # --- دالة رئيسية لتشغيل البوت (معدلة لتشمل الجدولة الذكية) ---
 def main():
