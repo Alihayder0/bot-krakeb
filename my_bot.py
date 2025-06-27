@@ -153,13 +153,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("أهلاً بك. اختر أحد الخيارات:", reply_markup=reply_markup)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global SERVICE_CHECK_PENDING  # 👈 يجب وضعه هنا قبل أي استخدام
+
     query = update.callback_query
     data = query.data
 
     if data != "confirm_service_check" and SERVICE_CHECK_PENDING:
-    await query.answer("⚠️ يجب تأكيد الصيانة أولاً للمتابعة.", show_alert=True)
-    return
-        
+        await query.answer("⚠️ يجب تأكيد الصيانة أولاً للمتابعة.", show_alert=True)
+        return
 
     try:
         await query.answer()
@@ -170,15 +171,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     action = parts[0]
 
     if action == "confirm_service_check":
-        global SERVICE_CHECK_PENDING
         SERVICE_CHECK_PENDING = False
-        
-        # **تعديل جوهري: تحديث تاريخ آخر صيانة وجدولة الدورة التالية**
+
         all_data = load_data()
-        all_data["system_info"]["last_service_check"] = datetime.now().isoformat()
+        all_data.setdefault("system_info", {})["last_service_check"] = datetime.now().isoformat()
         save_data(all_data)
 
-        # جدولة التذكير التالي بعد الفترة المحددة
         interval_seconds = timedelta(days=SERVICE_CHECK_INTERVAL_DAYS).total_seconds()
         context.job_queue.run_once(send_service_reminder, interval_seconds)
 
@@ -186,9 +184,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"✅ تم تأكيد الصيانة. سيتم التذكير مرة أخرى بعد {SERVICE_CHECK_INTERVAL_DAYS} أيام.")
         return
 
-    # --- باقي منطق الأزرار (يستخدم دوال البيانات الجديدة) ---
-    
-    # مثال على تعديل دالة واحدة، يجب تطبيق نفس المبدأ على الباقي
     elif action == "stop_timer_for":
         user_name = parts[1]
         if user_name not in active_timers:
@@ -196,58 +191,54 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         start_info = active_timers.pop(user_name)
         work_type = start_info['work_type']
-        duration_in_minutes = round((datetime.now() - start_info['start_time']).total_seconds() / 60)
-        
+        duration = round((datetime.now() - start_info['start_time']).total_seconds() / 60)
+
         all_data = load_data()
-        all_data["users"][user_name][work_type] = all_data["users"][user_name].get(work_type, 0) + duration_in_minutes
+        all_data["users"].setdefault(user_name, {}).setdefault(work_type, 0)
+        all_data["users"][user_name][work_type] += duration
         save_data(all_data)
-        
+
         keyboard = [[InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")]]
         await query.edit_message_text(
             f"✅ تم إيقاف عداد '{work_type}' لـ '{user_name}'.\n"
-            f"مدة العمل: {duration_in_minutes} دقيقة.\n"
+            f"مدة العمل: {duration} دقيقة.\n"
             f"إجمالي دقائق '{work_type}' الآن: {all_data['users'][user_name][work_type]} دقيقة.",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     elif action == "view_totals":
         all_data = load_data()
-        times = all_data["users"]
         message = "📊 إجمالي الدقائق المسجلة لكل شخص:\n\n"
-        for name, work_times in times.items():
+        for name, work_times in all_data.get("users", {}).items():
             message += f"👤 **{name}**:\n"
             total_minutes = sum(work_times.values())
             for work_type, minutes in work_times.items():
                 message += f"  - {work_type}: {minutes} دقيقة\n"
             total_hours = total_minutes // 60
-            remaining_minutes = total_minutes % 60
-            message += f"  - **المجموع**: {total_minutes} دقيقة ({total_hours} س و {remaining_minutes} د)\n\n"
+            rem_minutes = total_minutes % 60
+            message += f"  - **المجموع**: {total_minutes} دقيقة ({total_hours} س و {rem_minutes} د)\n\n"
         keyboard = [[InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data="main_menu")]]
         await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
 
-    # يجب تعديل كل الأماكن التي تستخدم load_data() و save_data() لتتعامل مع all_data['users']
-    # سأقوم بتعديلها جميعاً لك
-    
     elif action == "calculate_for":
         user_name = parts[1]
         all_data = load_data()
         user_times = all_data.get("users", {}).get(user_name, {})
-        # ... باقي الكود لحساب المال يبقى كما هو لأنه يقرأ فقط
         message = f"💰 حساب المستحقات لـ **{user_name}**:\n\n"
-        total_earnings_raw = 0
+        total = 0
         for work_type, minutes in user_times.items():
             rate = RATES_PER_HOUR.get(work_type, 0)
             hours = minutes / 60
-            earnings = hours * rate
-            total_earnings_raw += earnings
+            earned = hours * rate
+            total += earned
             message += (
                 f"*{work_type}*:\n"
                 f"  - الوقت: {minutes} دقيقة ({hours:.2f} ساعة)\n"
-                f"  - المستحق: **{round_to_nearest_250(earnings):,.0f}** دينار\n"
+                f"  - المستحق: **{round_to_nearest_250(earned):,.0f}** دينار\n"
             )
         message += (
             f"\n-----------------------------------\n"
-            f"💰 **إجمالي المستحقات**: **{round_to_nearest_250(total_earnings_raw):,.0f}** دينار عراقي"
+            f"💰 **إجمالي المستحقات**: **{round_to_nearest_250(total):,.0f}** دينار عراقي"
         )
         keyboard = [[InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")]]
         await query.edit_message_text(text=message, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
@@ -255,23 +246,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif action == "reset_user_confirm":
         user_name = parts[1]
         all_data = load_data()
-        all_data["users"][user_name] = {work_type: 0 for work_type in WORK_TYPES}
+        all_data["users"][user_name] = {work: 0 for work in WORK_TYPES}
         save_data(all_data)
         keyboard = [[InlineKeyboardButton("🔙 رجوع لقائمة المدير", callback_data="admin_menu")]]
         await query.edit_message_text(f"✅ تم تصفير إجمالي وقت العمل للمستخدم '{user_name}'.", reply_markup=InlineKeyboardMarkup(keyboard))
-    
+
     elif action == "reset_all_execute":
         if query.from_user.id == ADMIN_USER_ID:
             all_data = load_data()
-            all_data["users"] = {user: {work_type: 0 for work_type in WORK_TYPES} for user in USER_NAMES}
+            all_data["users"] = {name: {w: 0 for w in WORK_TYPES} for name in USER_NAMES}
             save_data(all_data)
             keyboard = [[InlineKeyboardButton("🔙 رجوع لقائمة المدير", callback_data="admin_menu")]]
             await query.edit_message_text("✅ تم تصفير عدادات جميع المستخدمين بنجاح.", reply_markup=InlineKeyboardMarkup(keyboard))
         else:
             await query.answer("عذراً، هذا الخيار متاح للمدير فقط.", show_alert=True)
-    
-    # ... باقي الأجزاء لا تحتاج تعديلاً كبيراً لأنها لا تتعامل مع البيانات مباشرة ...
-    # (select_user, timer_start_select_user, etc. تبقى كما هي)
+
     elif action == "select_work":
         user_name, work_type = parts[1], parts[2]
         if user_name in active_timers:
@@ -279,29 +268,33 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         active_timers[user_name] = {'start_time': datetime.now(), 'work_type': work_type}
         keyboard = [[InlineKeyboardButton("إنهاء الوقت ⏹️", callback_data="timer_stop_select_user")]]
-        await query.edit_message_text(f"✅ تم بدء عداد الوقت لـ '{user_name}' في مهمة '{work_type}' الساعة {datetime.now().strftime('%H:%M:%S')}.", reply_markup=InlineKeyboardMarkup(keyboard))
-    
+        await query.edit_message_text(
+            f"✅ تم بدء عداد الوقت لـ '{user_name}' في مهمة '{work_type}' الساعة {datetime.now().strftime('%H:%M:%S')}.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
     elif action == "stop_timer_all":
         if not active_timers:
             await query.edit_message_text("لا توجد أي عدادات وقت نشطة لإيقافها.")
             return
         all_data = load_data()
-        report_message = "✅ تم إيقاف جميع العدادات النشطة:\n\n"
+        message = "✅ تم إيقاف جميع العدادات النشطة:\n\n"
         for user_name in list(active_timers.keys()):
             start_info = active_timers.pop(user_name)
             work_type = start_info['work_type']
-            duration_in_minutes = round((datetime.now() - start_info['start_time']).total_seconds() / 60)
-            all_data["users"][user_name][work_type] = all_data["users"][user_name].get(work_type, 0) + duration_in_minutes
-            report_message += f"👤 {user_name} ({work_type}): +{duration_in_minutes} دقيقة\n"
+            duration = round((datetime.now() - start_info['start_time']).total_seconds() / 60)
+            all_data["users"].setdefault(user_name, {}).setdefault(work_type, 0)
+            all_data["users"][user_name][work_type] += duration
+            message += f"👤 {user_name} ({work_type}): +{duration} دقيقة\n"
         save_data(all_data)
         keyboard = [[InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")]]
-        await query.edit_message_text(report_message, reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif action == "calculate_money_select_user":
         keyboard = [[InlineKeyboardButton(name, callback_data=f"calculate_for:{name}")] for name in USER_NAMES]
         keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
         await query.edit_message_text("اختر الشخص لحساب مستحقاته المالية:", reply_markup=InlineKeyboardMarkup(keyboard))
-        
+
     elif action == "admin_menu":
         if query.from_user.id == ADMIN_USER_ID:
             keyboard = [
@@ -312,8 +305,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("قائمة المدير (يرجى الحذر):", reply_markup=InlineKeyboardMarkup(keyboard))
         else:
             await query.answer("عذراً، هذا الخيار متاح للمدير فقط.", show_alert=True)
-            
-    elif action == "reset_all_confirm":
+
+        elif action == "reset_all_confirm":
         if query.from_user.id == ADMIN_USER_ID:
             keyboard = [
                 [InlineKeyboardButton("✅ نعم، قم بالتصفير", callback_data="reset_all_execute")],
@@ -325,7 +318,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         else:
             await query.answer("عذراً، هذا الخيار متاح للمدير فقط.", show_alert=True)
-            
+
     elif action == "main_menu":
         await start_command(update, context)
 
@@ -333,13 +326,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton(name, callback_data=f"select_user:{name}")] for name in USER_NAMES]
         keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
         await query.edit_message_text("من أنت؟ اختر اسمك من القائمة:", reply_markup=InlineKeyboardMarkup(keyboard))
-        
+
     elif action == "select_user":
         user_name = parts[1]
         keyboard = [[InlineKeyboardButton(work, callback_data=f"select_work:{user_name}:{work}")] for work in WORK_TYPES]
         keyboard.append([InlineKeyboardButton("🔙 رجوع لاختيار الاسم", callback_data="timer_start_select_user")])
         await query.edit_message_text(f"أهلاً {user_name}. ما هو نوع العمل؟", reply_markup=InlineKeyboardMarkup(keyboard))
-        
+
     elif action == "timer_stop_select_user":
         active_users = list(active_timers.keys())
         if not active_users:
@@ -350,6 +343,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton("⏹️ إنهاء للجميع", callback_data="stop_timer_all")])
         keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
         await query.edit_message_text("اختر المستخدم الذي تريد إيقاف عداده:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+    else:
+        # معالجة حالات غير معروفة أو غير متوقعة
+        await query.answer("عذراً، الخيار غير معروف.", show_alert=True)
 
 # --- دالة رئيسية لتشغيل البوت (معدلة لتشمل الجدولة الذكية) ---
 def main():
