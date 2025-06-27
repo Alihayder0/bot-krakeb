@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import json
+import subprocess
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -55,7 +56,21 @@ def load_data():
             return default_structure # في حالة الخطأ، ارجع الهيكل الافتراضي
     return default_structure
 
+
 def save_data(data):
+    """حفظ البيانات وعمل commit + push تلقائي إلى GitHub."""
+    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+    try:
+        # تأكد من وجود تغييرات حقيقية
+        result = subprocess.run(["git", "diff", "--quiet", DATA_FILE])
+        if result.returncode != 0:  # 0 = لا تغييرات، 1 = تغييرات موجودة
+            subprocess.run(["git", "add", DATA_FILE])
+            subprocess.run(["git", "commit", "-m", f"Auto backup: {datetime.now().isoformat()}"])
+            subprocess.run(["git", "push", "origin", "main"])
+    except Exception as e:
+        print(f"❌ فشل النسخ الاحتياطي التلقائي إلى GitHub: {e}")
     """حفظ البيانات وعمل push تلقائي إلى GitHub."""
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
