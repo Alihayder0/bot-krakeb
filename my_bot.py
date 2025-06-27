@@ -56,9 +56,18 @@ def load_data():
     return default_structure
 
 def save_data(data):
-    """حفظ البيانات بالهيكل الجديد في ملف JSON."""
+    """حفظ البيانات وعمل push تلقائي إلى GitHub."""
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
+
+    try:
+        # تأكد من أن هناك تغييرات حقيقية في الملف قبل الـ commit
+        if os.system("git diff --quiet data.json") != 0:
+            os.system("git add data.json")
+            os.system(f"git commit -m 'Auto backup: {datetime.now().isoformat()}'")
+            os.system("git push origin main")  # غيّر "main" إذا كان فرعك اسمه مختلف
+    except Exception as e:
+        print(f"فشل في إجراء النسخ الاحتياطي التلقائي: {e}")
 
 def round_to_nearest_250(amount):
     return round(amount / 250) * 250
