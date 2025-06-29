@@ -409,19 +409,18 @@ def main():
         print("هذا يعني أن المكتبة لم تُثبّت مع الإضافات اللازمة للمهام المجدولة.")
         print('لحل المشكلة، يرجى إيقاف البوت وتنفيذ الأمر التالي في الطرفية (Terminal):')
         print('\n  pip install --upgrade "python-telegram-bot[job-queue]"\n')
-        return # إيقاف تشغيل البوت لأن الجدولة لن تعمل
+        return  # إيقاف تشغيل البوت لأن الجدولة لن تعمل
 
     # إضافة المعالجات
-  app.add_handler(CommandHandler("force_reset", force_reset_command))
-
+    app.add_handler(CommandHandler("force_reset", force_reset_command))
     app.add_handler(CallbackQueryHandler(button_handler))
 
     # تشغيل الجدولة الذكية عند بدء التشغيل
-    # نستخدم run_once لتشغيل الدالة التي ستقوم بالتحقق والجدولة بعد 5 ثواني
-    app.job_queue.run_once(check_and_schedule_service_reminder, 5) 
+    app.job_queue.run_once(check_and_schedule_service_reminder, 5)
 
     print("Polling...")
     app.run_polling()
+
 
 if __name__ == '__main__':
     main()
