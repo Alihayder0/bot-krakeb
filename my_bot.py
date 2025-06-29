@@ -164,6 +164,24 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(message_text, reply_markup=reply_markup)
 
+async def force_reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """أمر سري يستخدمه المدير فقط لإلغاء حالة الصيانة يدويًا."""
+    global SERVICE_CHECK_PENDING
+
+    if update.effective_user.id != ADMIN_USER_ID:
+        await update.message.reply_text("🚫 هذا الأمر متاح فقط للمدير.")
+        return
+
+    SERVICE_CHECK_PENDING = False
+    all_data = load_data()
+    all_data.setdefault("system_info", {})["last_service_check"] = datetime.now().isoformat()
+    save_data(all_data)
+
+    # جدولة التذكير القادم
+    interval_seconds = timedelta(days=SERVICE_CHECK_INTERVAL_DAYS).total_seconds()
+    context.job_queue.run_once(send_service_reminder, interval_seconds)
+
+    await update.message.reply_text("✅ تم إلغاء وضع الصيانة يدويًا. البوت الآن يعمل كالمعتاد.")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """المعالج الرئيسي لجميع ضغطات الأزرار."""
@@ -394,7 +412,8 @@ def main():
         return # إيقاف تشغيل البوت لأن الجدولة لن تعمل
 
     # إضافة المعالجات
-    app.add_handler(CommandHandler("start", start_command))
+  app.add_handler(CommandHandler("force_reset", force_reset_command))
+
     app.add_handler(CallbackQueryHandler(button_handler))
 
     # تشغيل الجدولة الذكية عند بدء التشغيل
