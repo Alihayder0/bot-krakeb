@@ -1,7 +1,7 @@
 import os
 import json
 import subprocess
-import asyncio # <-- تم استيراد المكتبة المطلوبة للقفل
+import asyncio
 from datetime import datetime
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -30,7 +30,7 @@ RATES_PER_HOUR = {
 # --- متغيرات لحفظ الحالة العامة للتطبيق ---
 all_data = {}
 active_timers = {}
-lock = asyncio.Lock() # <-- تم إنشاء القفل هنا
+lock = asyncio.Lock() # قفل لمنع تضارب البيانات
 
 # --- دوال التعامل مع البيانات ---
 
@@ -54,14 +54,15 @@ def load_app_state():
         with open(DATA_FILE, 'r', encoding='utf-8') as f:
             all_data = json.load(f)
             
-        if "users" not in all_data:
-            all_data["users"] = {}
-        if "active_timers" not in all_data:
-            all_data["active_timers"] = {}
+        # ضمان وجود الهياكل الأساسية
+        all_data.setdefault("users", {})
+        all_data.setdefault("active_timers", {})
 
+        # ضمان وجود جميع المستخدمين الحاليين في البيانات
         for user in USER_NAMES:
             all_data["users"].setdefault(user, {work_type: 0 for work_type in WORK_TYPES})
 
+        # استعادة العدادات النشطة من الملف
         active_timers.clear()
         for user, timer_data in all_data.get("active_timers", {}).items():
             active_timers[user] = {
@@ -138,25 +139,17 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """المعالج الرئيسي لجميع ضغطات الأزرار."""
     query = update.callback_query
-    # الاستجابة الفورية للزر خارج القفل لتحسين تجربة المستخدم
     await query.answer()
 
-    # استخدام قفل لضمان عدم حدوث تضارب عند تحديث الحالة من عدة مستخدمين بنفس الوقت
     async with lock:
         data = query.data
         user_id = query.from_user.id
-
         parts = data.split(':')
         action = parts[0]
 
-        # --- جميع العمليات التي تعدل البيانات تتم الآن داخل هذا القفل ---
-
         if action == "stop_timer_for":
             user_name = parts[1]
-            if user_name not in active_timers:
-                # لا حاجة لإرسال رسالة هنا لأن query.answer بالأسفل ستقوم بذلك
-                pass
-            else:
+            if user_name in active_timers:
                 start_info = active_timers.pop(user_name)
                 work_type = start_info['work_type']
                 duration = round((datetime.now() - start_info['start_time']).total_seconds() / 60)
@@ -171,10 +164,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"إجمالي دقائق '{work_type}' الآن: {all_data['users'][user_name][work_type]} دقيقة.",
                     reply_markup=InlineKeyboardMarkup(keyboard)
                 )
-            # تم نقل رسالة الخطأ لتظهر في كل الحالات
-            if user_name not in active_timers and action == "stop_timer_for":
-                 await query.edit_message_text(f"لا يوجد عداد نشط لـ '{user_name}'.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 رجوع", callback_data="main_menu")]]))
-
+            else:
+                # حالة الخطأ: لا يوجد عداد نشط لهذا المستخدم
+                keyboard = [[InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")]]
+                await query.edit_message_text(f"لا يوجد عداد نشط لـ '{user_name}'.", reply_markup=InlineKeyboardMarkup(keyboard))
 
         elif action == "view_totals":
             message = "📊 *إجمالي الدقائق المسجلة لكل شخص:*\n\n"
@@ -185,7 +178,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     message += "  - لا يوجد وقت مسجل.\n"
                 else:
                     for work_type, minutes in work_times.items():
-                        message += f"  - {work_type}: {minutes} دقيقة\n"
+                        if minutes > 0:
+                            message += f"  - {work_type}: {minutes} دقيقة\n"
                 
                 if total_minutes > 0:
                     total_hours = total_minutes // 60
@@ -243,8 +237,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = [[InlineKeyboardButton("🔙 رجوع لقائمة المدير", callback_data="admin_menu")]]
                 await query.edit_message_text("✅ تم تصفير عدادات جميع المستخدمين وإيقاف جميع العدادات النشطة بنجاح.", reply_markup=InlineKeyboardMarkup(keyboard))
             else:
-                await context.bot.send_message(chat_id=user_id, text="عذراً، هذا الخيار متاح للمدير فقط.")
-
+                await query.answer("عذراً، هذا الخيار متاح للمدير فقط.", show_alert=True)
 
         elif action == "select_work":
             user_name, work_type = parts[1], parts[2]
@@ -265,12 +258,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text("لا توجد أي عدادات وقت نشطة لإيقافها.")
             else:
                 message = "✅ تم إيقاف جميع العدادات النشطة:\n\n"
-                for user_name in list(active_timers.keys()):
-                    start_info = active_timers.pop(user_name)
+                for user_name_to_stop in list(active_timers.keys()):
+                    start_info = active_timers.pop(user_name_to_stop)
                     work_type = start_info['work_type']
                     duration = round((datetime.now() - start_info['start_time']).total_seconds() / 60)
-                    all_data["users"][user_name][work_type] += duration
-                    message += f"👤 {user_name} ({work_type}): +{duration} دقيقة\n"
+                    all_data["users"][user_name_to_stop][work_type] += duration
+                    message += f"👤 {user_name_to_stop} ({work_type}): +{duration} دقيقة\n"
                 
                 save_app_state()
 
@@ -292,7 +285,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ]
                 await query.edit_message_text("قائمة المدير (يرجى الحذر):", reply_markup=InlineKeyboardMarkup(keyboard))
             else:
-                await context.bot.send_message(chat_id=user_id, text="عذراً، هذا الخيار متاح للمدير فقط.")
+                await query.answer("عذراً، هذا الخيار متاح للمدير فقط.", show_alert=True)
 
         elif action == "reset_all_confirm":
             if user_id == ADMIN_USER_ID:
@@ -306,7 +299,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode='Markdown'
                 )
             else:
-                await context.bot.send_message(chat_id=user_id, text="عذراً، هذا الخيار متاح للمدير فقط.")
+                await query.answer("عذراً، هذا الخيار متاح للمدير فقط.", show_alert=True)
 
         elif action == "main_menu":
             await start_command(update, context)
