@@ -37,5 +37,15 @@
             "عمل يدوي": 0
         }
     },
-    "active_timers": {}
+    "active_timers": {},
+    "self_edit_allowed_ids": [],
+    "user_links": {
+        "1495688933": "علي"
+    },
+    "print_tasks": {},
+    "print_settings": {
+        "auto_receive_from_channel": true,
+        "default_priority": "medium",
+        "task_counter": 0
+    }
 }
