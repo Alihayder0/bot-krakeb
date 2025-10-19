@@ -38,7 +38,9 @@
         }
     },
     "active_timers": {},
-    "self_edit_allowed_ids": [],
+    "self_edit_allowed_ids": [
+        1495688933
+    ],
     "user_links": {
         "1495688933": "علي"
     },
